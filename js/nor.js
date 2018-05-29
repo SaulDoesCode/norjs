@@ -14,21 +14,22 @@ var nor = {
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
     };
     var parameters;
-    for (var prop in config) {
-      if (config.hasOwnProperty(prop)) {
-        var value = config[prop];
-
-        if (prop === "method") {
-          method = value;
-        } else if (prop === "data") {
-          parameters = value;
-        } else if (prop === "headers" && value.constructor === Object) {
-          for (var header in value) headers[header] = value;
-        } else if (prop === "cors") {
-          headers["Access-Control-Allow-Origin"] =  typeof value === "string"
-            ? value : value === true ? "*" : undefined;
-        } else if (prop === "type") {
-          headers["Content-Type"] = value;
+    if (config != null && config.constructor === Object) {
+      for (var prop in config) {
+        if (config.hasOwnProperty(prop)) {
+          var value = config[prop];
+          if (prop === "method") {
+            method = value;
+          } else if (prop === "data") {
+            parameters = value;
+          } else if (prop === "headers" && value.constructor === Object) {
+            for (var header in value) headers[header] = value;
+          } else if (prop === "cors") {
+            headers["Access-Control-Allow-Origin"] = typeof value === "string"
+              ? value : value === true ? "*" : undefined;
+          } else if (prop === "type") {
+            headers["Content-Type"] = value;
+          }
         }
       }
     }
@@ -36,7 +37,6 @@ var nor = {
     return new Promise(function(resolve, reject) {
       var request = new XMLHttpRequest();
       request.onload = function() {
-        var status = request.status;
         // resolve the request when successful
         if (request.status === 200 || request.statusText === "OK") {
           resolve(request);
