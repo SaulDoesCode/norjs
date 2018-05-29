@@ -1,7 +1,7 @@
 var nor = {
   ver: "0.0.5",
 
-  curry: function (fn, arity) {
+  curry: function(fn, arity) {
     if (arity == null) arity = fn.length;
     var args = Array.prototype.slice.call(arguments, 2);
     return arity <= args.length ? fn.apply(undefined, args) :
@@ -9,40 +9,65 @@ var nor = {
   },
 
   request: function(url, config) {
-    var method = "GET", 
-        parameters = "", 
-        callbacks = {"onSuccess": false, "onError": false}
-
+    var method = "GET";
+    var headers = {
+      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
+    };
+    var parameters;
     for (var prop in config) {
       if (config.hasOwnProperty(prop)) {
         var value = config[prop];
 
-        if (prop == "method") {
+        if (prop === "method") {
           method = value;
-        } else if (prop == "onSuccess") {
-          // if the onSuccess is defined set it true
-          callbacks["onSuccess"] = true;
-        } else if (prop == "onError") {
-          callbacks["onError"] = true;
-        } else if (prop == "data") {
+        } else if (prop === "data") {
           parameters = value;
+        } else if (prop === "headers" && value.constructor === Object) {
+          for (var header in value) headers[header] = value;
+        } else if (prop === "cors") {
+          headers["Access-Control-Allow-Origin"] =  typeof value === "string"
+            ? value : value === true ? "*" : undefined;
+        } else if (prop === "type") {
+          headers["Content-Type"] = value;
         }
       }
     }
 
-    var request = new XMLHttpRequest();
-    request.onload = function () {
-      // if the dev defined an onSuccess function, we call the callback returning the request Object
-      if (request.status === 200 && callbacks.onSuccess) config.onSuccess(request);
-      // if the dev defined an onError function, we call the callback returning the request Object
-      if ((request.status === 404 || request.status === 500) && callbacks.onError) config.onError(request);
-    }
-    
-    request.open(method, url, true);
-    
-    request.setRequestHeader("Content-Type",
-      "application/x-www-form-urlencoded; charset=UTF-8");
-    request.send(parameters);
+    return new Promise(function(resolve, reject) {
+      var request = new XMLHttpRequest();
+      request.onload = function() {
+        var status = request.status;
+        // resolve the request when successful
+        if (request.status === 200 || request.statusText === "OK") {
+          resolve(request);
+        }
+        // reject unsuccesful requests
+        if (request.status >= 400) {
+          var err = new Error(
+            "request failed: nor.request(" + url + ") -> " + request.status
+          );
+          // everything is an object, give dev access to request
+          // even if it's on an error
+          err.request = request;
+          reject(err);
+        }
+      }
+
+      request.open(method, url, true);
+
+      if (headers) {
+        for (var header in headers) {
+          request.setRequestHeader(header, headers[header]);
+        }
+      }
+
+      try {
+        request.send(parameters);
+      } catch (e) {
+        e.request = request;
+        reject(e);
+      }
+    });
   },
 
   // tag : String
